@@ -1,64 +1,53 @@
-import { useEffect, useState } from "react"
+import { useContext, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import fetchSearch from "./fetchSearch"
 import useBreedList from "./useBreedList"
 import Results from "./Results"
+import AdoptedPetContext from "./AdoptedPetContext"
 
 const ANIMALS = ["bird", "cat", "dog", "rabbit", "reptile"]
 
 const SearchParams = () => {
   // eslint-disable-next-line no-unused-vars
-  const [location, setLocation] = useState("")
   const [animal, setAnimal] = useState("")
-  const [breed, setBreed] = useState("")
-  const [pets, setPets] = useState([])
   const [breeds] = useBreedList(animal)
+  const [requestParams, setRequestParams] = useState({
+    location: "",
+    animal: "",
+    breed: "",
+  })
+  const [adoptedPet] = useContext(AdoptedPetContext)
 
-  useEffect(() => {
-    requestPets()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const results = useQuery(["search", requestParams], fetchSearch)
+  const pets = results?.data?.pets ?? []
 
-  async function requestPets() {
-    const res = await fetch(
-      `http://pets-v2.dev-apis.com/pets?animal=${animal}&location=${location}&breed=${breed}`,
-    ) // melakukan proses fetching dengan menembak API
-    const json = await res.json() //parsing value dari var res menjadi json
-
-    setPets(json.pets) // memperbarui value var pets menjadi value dari var json
-  }
+  console.log("berhasil adopsi: ", adoptedPet)
 
   return (
     <div className="search-params">
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          requestPets()
+          const formData = new FormData(e.target)
+          const obj = {
+            animal: formData.get("animal") ?? "",
+            breed: formData.get("breed") ?? "",
+            location: formData.get("location") ?? "",
+          }
+          setRequestParams(obj)
         }}
       >
         <label htmlFor="location">
           Location
-          <input
-            id="location"
-            value={location}
-            placeholder="Location"
-            onChange={(e) => {
-              setLocation(e.target.value)
-              console.log(e.target.value)
-            }}
-          />
+          <input id="location" name="location" placeholder="Location" />
         </label>
         <label htmlFor="animal">
           Animal
           <select
             id="animal"
-            value={animal}
-            onChange={(e) => {
-              setAnimal(e.target.value)
-              setBreed("")
-            }}
-            onBlur={(e) => {
-              setAnimal(e.target.value)
-              setBreed("")
-            }}
+            name="animal"
+            onChange={(e) => setAnimal(e.target.value)}
+            onBlur={(e) => setAnimal(e.target.value)}
           >
             <option />
             {ANIMALS.map((animal) => (
@@ -70,13 +59,7 @@ const SearchParams = () => {
         </label>
         <label htmlFor="breed">
           Breed
-          <select
-            disabled={!breeds.length}
-            id="breed"
-            value={breed}
-            onChange={(e) => setBreed(e.target.value)}
-            onBlur={(e) => setBreed(e.target.value)}
-          >
+          <select disabled={!breeds.length} id="breed" name="breed">
             <option />
             {breeds.map((breed) => (
               <option key={breed} value={breed}>
@@ -86,6 +69,11 @@ const SearchParams = () => {
           </select>
         </label>
         <button>Submit</button>
+        {adoptedPet ? (
+          <div className="pet image-container">
+            <img src={adoptedPet.images[0]} alt={adoptedPet.name} />
+          </div>
+        ) : null}
       </form>
 
       <Results pets={pets} />
